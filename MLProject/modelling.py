@@ -89,7 +89,7 @@ def train_and_log(
         mlflow.log_param("model_type", "RandomForestClassifier")
         mlflow.log_param("n_estimators", n_estimators)
         mlflow.log_param(
-            "rf_max_depth",
+            "rf_max_depth", 
             "None" if max_depth is None else max_depth
         )
         mlflow.log_param("random_state", 42)
