@@ -17,9 +17,9 @@ entry_points:
       model_name:
         type: str
         default: "telco-churn-model"
-    command: >
+    command: >-
       python modelling.py
-        --data_path {data_path}
-        --n_estimators {n_estimators}
-        --max_depth {max_depth}
-        --model_name {model_name}
+      --data_path {data_path}
+      --n_estimators {n_estimators}
+      --max_depth {max_depth}
+      --model_name {model_name}
