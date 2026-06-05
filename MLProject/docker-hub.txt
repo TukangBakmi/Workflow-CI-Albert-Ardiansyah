@@ -1,1 +1,22 @@
-https://hub.docker.com/r/albert123/telco-churn-model
+# Docker Hub Image
+
+Tautan Docker Hub untuk project Telco Churn MLflow:
+
+https://hub.docker.com/r/<DOCKER_USERNAME>/telco-churn-mlflow
+
+## Cara Pull Image
+
+```bash
+docker pull <DOCKER_USERNAME>/telco-churn-mlflow:latest
+```
+
+## Cara Run Container
+
+```bash
+docker run -p 5000:5000 \
+  -e MLFLOW_TRACKING_URI=http://localhost:5000 \
+  <DOCKER_USERNAME>/telco-churn-mlflow:latest
+```
+
+> Ganti `<DOCKER_USERNAME>` dengan username Docker Hub Anda.
+> Image ini di-build otomatis oleh GitHub Actions setiap kali ada push ke branch `main`.
