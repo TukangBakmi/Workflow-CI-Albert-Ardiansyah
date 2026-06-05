@@ -55,7 +55,7 @@ jobs:
           MAX_D=${{ github.event.inputs.max_depth || '0' }}
           mlflow run . \
             --env-manager=local \
-            -P data_path=telco_churn_preprocessing \
+            -P data_path=MLProject/telcocustomerchurn_preprocessing.csv \
             -P n_estimators=$N_EST \
             -P max_depth=$MAX_D \
             -P model_name=telco-churn-model
