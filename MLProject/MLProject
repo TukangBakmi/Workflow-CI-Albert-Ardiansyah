@@ -7,7 +7,7 @@ entry_points:
     parameters:
       data_path:
         type: str
-        default: "telco_churn_preprocessing"
+        default: "telcocustomerchurn_preprocessing.csv"
       n_estimators:
         type: int
         default: 100
