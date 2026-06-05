@@ -88,12 +88,15 @@ def train_and_log(
 
         mlflow.log_param("model_type", "RandomForestClassifier")
         mlflow.log_param("n_estimators", n_estimators)
-        mlflow.log_param("max_depth", max_depth)
+        mlflow.log_param(
+            "rf_max_depth",
+            "None" if max_depth is None else max_depth
+        )
         mlflow.log_param("random_state", 42)
 
         model = RandomForestClassifier(
             n_estimators=n_estimators,
-            max_depth=max_depth,
+            max_depth=None if max_depth == 0 else max_depth,
             random_state=42,
             n_jobs=-1,
         )
@@ -192,9 +195,6 @@ def main():
     )
 
     args = parser.parse_args()
-
-    if args.max_depth == 0:
-        args.max_depth = None
 
     print("=" * 50)
     print("Telco Churn — MLflow Training Pipeline")
