@@ -147,7 +147,7 @@ def main():
     parser.add_argument(
         "--data_path",
         type=str,
-        default="telco_churn_preprocessing",
+        default="./MLProjectc/telcocustomerchurn_preprocessing",
         help="Path to preprocessed CSV file or folder"
     )
     parser.add_argument("--n_estimators", type=int, default=100)
