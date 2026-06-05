@@ -1,42 +1,184 @@
-name: Retrain Model
+name: CI - Telco Churn MLflow Training
 
 on:
   push:
     branches:
       - main
-
+    paths:
+      - "MLProject/**"
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+    inputs:
+      n_estimators:
+        description: "Jumlah estimator Random Forest"
+        required: false
+        default: "100"
+      max_depth:
+        description: "Max depth pohon (0 = None)"
+        required: false
+        default: "0"
 
 jobs:
-
-  retrain:
-
+  # ─────────────────────────────────────────────
+  # JOB 1: Train model dengan MLflow Project
+  # ─────────────────────────────────────────────
+  train:
+    name: Train Model
     runs-on: ubuntu-latest
 
-    steps:
+    outputs:
+      run_id: ${{ steps.get_run_id.outputs.run_id }}
 
-      - name: Checkout Repository
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.10"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          pip install mlflow
-          pip install pandas
-          pip install scikit-learn
-          pip install numpy
+          python -m pip install --upgrade pip
+          pip install mlflow==2.12.1 scikit-learn==1.4.2 pandas==2.2.2 numpy==1.26.4 cloudpickle==3.0.0
+
+      - name: Set MLflow Tracking URI (lokal runner)
+        run: echo "MLFLOW_TRACKING_URI=sqlite:///mlflow.db" >> $GITHUB_ENV
 
       - name: Run MLflow Project
+        working-directory: MLProject
         run: |
-          cd MLProject
-          mlflow run . -e main
+          N_EST=${{ github.event.inputs.n_estimators || '100' }}
+          MAX_D=${{ github.event.inputs.max_depth || '0' }}
+          mlflow run . \
+            --env-manager=local \
+            -P data_path=telco_churn_preprocessing \
+            -P n_estimators=$N_EST \
+            -P max_depth=$MAX_D \
+            -P model_name=telco-churn-model
 
-      - name: Upload MLruns
+      - name: Get latest MLflow Run ID
+        id: get_run_id
+        working-directory: MLProject
+        run: |
+          RUN_ID=$(python - <<'EOF'
+          import mlflow, os
+          os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
+          client = mlflow.tracking.MlflowClient()
+          exp = client.get_experiment_by_name("Default")
+          runs = client.search_runs(
+              experiment_ids=[exp.experiment_id],
+              order_by=["start_time DESC"],
+              max_results=1
+          )
+          print(runs[0].info.run_id)
+          EOF
+          )
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "[INFO] Run ID: $RUN_ID"
+
+      - name: Export MLflow artifacts
+        working-directory: MLProject
+        run: |
+          python - <<'EOF'
+          import mlflow, os, shutil
+          os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
+          client = mlflow.tracking.MlflowClient()
+          run_id = "${{ steps.get_run_id.outputs.run_id }}"
+          local_path = client.download_artifacts(run_id, "", dst_path="exported_artifacts")
+          print(f"[INFO] Artifacts saved to: {local_path}")
+          EOF
+
+      - name: Upload artifacts to GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: mlruns
-          path: MLProject/mlruns
+          name: mlflow-artifacts-${{ github.run_number }}
+          path: MLProject/exported_artifacts/
+          retention-days: 30
+
+      - name: Save artifacts back to repository
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: update model artifacts [run #${{ github.run_number }}]"
+          file_pattern: "MLProject/exported_artifacts/**"
+          branch: main
+          skip_dirty_check: false
+
+  # ─────────────────────────────────────────────
+  # JOB 2: Build & Push Docker Image ke Docker Hub
+  # ─────────────────────────────────────────────
+  docker:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: train
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install MLflow
+        run: pip install mlflow==2.12.1 scikit-learn==1.4.2 pandas==2.2.2 numpy==1.26.4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image with mlflow build-docker
+        working-directory: MLProject
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow"
+          mlflow models build-docker \
+            --model-uri "runs:/${{ needs.train.outputs.run_id }}/model" \
+            --name "$IMAGE_NAME" \
+            --env-manager local
+
+      - name: Tag & Push Docker image
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow"
+          docker tag "$IMAGE_NAME":latest "$IMAGE_NAME":${{ github.run_number }}
+          docker push "$IMAGE_NAME":latest
+          docker push "$IMAGE_NAME":${{ github.run_number }}
+          echo "✅ Pushed: $IMAGE_NAME:latest"
+          echo "✅ Pushed: $IMAGE_NAME:${{ github.run_number }}"
+
+      - name: Update DockerHub_Link.md
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow"
+          cat > MLProject/DockerHub_Link.md <<EOF
+          # Docker Hub Image
+
+          Tautan Docker Hub untuk project Telco Churn MLflow:
+
+          https://hub.docker.com/r/$IMAGE_NAME
+
+          ## Cara Pull Image
+
+          \`\`\`bash
+          docker pull $IMAGE_NAME:latest
+          \`\`\`
+
+          ## Cara Run Container
+
+          \`\`\`bash
+          docker run -p 5000:5000 $IMAGE_NAME:latest
+          \`\`\`
+
+          > Build #${{ github.run_number }} — Run ID: ${{ needs.train.outputs.run_id }}
+          EOF
+
+      - name: Commit updated DockerHub link
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: update DockerHub link [build #${{ github.run_number }}]"
+          file_pattern: "MLProject/DockerHub_Link.md"
+          branch: main
