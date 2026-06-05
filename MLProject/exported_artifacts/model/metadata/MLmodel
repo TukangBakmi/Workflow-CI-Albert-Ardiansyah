@@ -15,8 +15,8 @@ flavors:
     sklearn_version: 1.4.2
 mlflow_version: 2.12.1
 model_size_bytes: 19069205
-model_uuid: 503bb757a9244228b62c13cae46eedde
-run_id: 92ded6d9d83a4262940bfaa381d68df0
+model_uuid: 59d607c8bf6749b8921c49ffebf35867
+run_id: c5028773aa044534ba1453a4e6172201
 saved_input_example_info:
   artifact_path: input_example.json
   pandas_orient: split
@@ -58,4 +58,4 @@ signature:
     {"type": "boolean", "name": "PaymentMethod_Mailed check", "required": true}]'
   outputs: '[{"type": "long", "required": true}]'
   params: null
-utc_time_created: '2026-06-05 16:38:44.263317'
+utc_time_created: '2026-06-05 16:42:02.937505'
