@@ -1,0 +1,41 @@
+feature,importance
+TotalCharges,0.16795118472643314
+MonthlyCharges,0.14776955488226654
+tenure,0.14412398698184611
+Contract_Month-to-month,0.0643450940861296
+TechSupport_No,0.03242518857191338
+OnlineSecurity_No,0.028229525563595058
+InternetService_Fiber optic,0.028189855764102184
+gender,0.02804036141387447
+PaymentMethod_Electronic check,0.027480728298422054
+PaperlessBilling,0.0247835922779811
+Partner,0.02300186781684367
+SeniorCitizen,0.020892640281617917
+Dependents,0.019203931542162912
+OnlineBackup_No,0.015137788762783403
+Contract_Two year,0.015034026645587107
+DeviceProtection_No,0.014695231886833695
+OnlineBackup_Yes,0.013902236575606287
+MultipleLines_Yes,0.013516648989088487
+MultipleLines_No,0.013337458837785263
+PaymentMethod_Bank transfer (automatic),0.012474883860755903
+PaymentMethod_Credit card (automatic),0.012415411812934145
+DeviceProtection_Yes,0.011688182896708716
+StreamingMovies_Yes,0.011538726684115612
+StreamingTV_Yes,0.01148233690561609
+InternetService_DSL,0.011217851226876557
+PaymentMethod_Mailed check,0.011033878540795274
+StreamingMovies_No,0.010785950752419404
+StreamingTV_No,0.010689474393398311
+OnlineSecurity_Yes,0.010688987155747382
+Contract_One year,0.0103239021187775
+TechSupport_Yes,0.00986901392768591
+OnlineBackup_No internet service,0.00386643192406925
+MultipleLines_No phone service,0.003481523067992654
+PhoneService,0.0034350889534817347
+DeviceProtection_No internet service,0.002897564761415525
+OnlineSecurity_No internet service,0.002523991575409612
+StreamingTV_No internet service,0.00240756928495241
+TechSupport_No internet service,0.0020849390437759512
+StreamingMovies_No internet service,0.002004609518762085
+InternetService_No,0.0010287776894376585
