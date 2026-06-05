@@ -43,20 +43,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install mlflow==2.12.1 scikit-learn==1.4.2 pandas==2.2.2 numpy==1.26.4 cloudpickle==3.0.0
 
-      - name: Set MLflow Tracking URI (lokal runner)
+      - name: Set MLflow Tracking URI
         run: echo "MLFLOW_TRACKING_URI=sqlite:///mlflow.db" >> $GITHUB_ENV
 
+      # BUG FIX 1: Tanda backslash \ diikuti spasi sebelum newline → argumen tidak terbaca.
+      # BUG FIX 2: Baris "-P data_path=..." tidak punya backslash di akhir baris sebelumnya
+      #            sehingga perintah mlflow run terpotong lebih awal.
+      # SOLUSI   : Gunakan >- (YAML block scalar) agar semua baris dilipat jadi satu baris.
       - name: Run MLflow Project
         working-directory: MLProject
-        run: |
-          N_EST=${{ github.event.inputs.n_estimators || '100' }}
-          MAX_D=${{ github.event.inputs.max_depth || '0' }}
-          mlflow run . \
-            --env-manager=local \
-            -P data_path=telcocustomerchurn_preprocessing.csv
-            -P n_estimators=$N_EST \
-            -P max_depth=$MAX_D \
-            -P model_name=telco-churn-model
+        env:
+          N_EST: ${{ github.event.inputs.n_estimators || '100' }}
+          MAX_D: ${{ github.event.inputs.max_depth || '0' }}
+        run: >-
+          mlflow run .
+          --env-manager=local
+          -P data_path=telcocustomerchurn_preprocessing.csv
+          -P n_estimators=$N_EST
+          -P max_depth=$MAX_D
+          -P model_name=telco-churn-model
 
       - name: Get latest MLflow Run ID
         id: get_run_id
@@ -82,7 +87,7 @@ jobs:
         working-directory: MLProject
         run: |
           python - <<'EOF'
-          import mlflow, os, shutil
+          import mlflow, os
           os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
           client = mlflow.tracking.MlflowClient()
           run_id = "${{ steps.get_run_id.outputs.run_id }}"
@@ -131,27 +136,34 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # BUG FIX 3: Sama seperti bug 1 — backslash multiline di dalam `run: |`
+      # tidak reliable. Gunakan >- untuk perintah panjang.
       - name: Build Docker image with mlflow build-docker
         working-directory: MLProject
-        run: |
-          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow"
-          mlflow models build-docker \
-            --model-uri "runs:/${{ needs.train.outputs.run_id }}/model" \
-            --name "$IMAGE_NAME" \
-            --env-manager local
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow
+          RUN_ID: ${{ needs.train.outputs.run_id }}
+        run: >-
+          mlflow models build-docker
+          --model-uri "runs:/$RUN_ID/model"
+          --name "$IMAGE_NAME"
+          --env-manager local
 
       - name: Tag & Push Docker image
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow
         run: |
-          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow"
-          docker tag "$IMAGE_NAME":latest "$IMAGE_NAME":${{ github.run_number }}
-          docker push "$IMAGE_NAME":latest
-          docker push "$IMAGE_NAME":${{ github.run_number }}
+          docker tag "$IMAGE_NAME:latest" "$IMAGE_NAME:${{ github.run_number }}"
+          docker push "$IMAGE_NAME:latest"
+          docker push "$IMAGE_NAME:${{ github.run_number }}"
           echo "✅ Pushed: $IMAGE_NAME:latest"
           echo "✅ Pushed: $IMAGE_NAME:${{ github.run_number }}"
 
       - name: Update DockerHub_Link.md
+        env:
+          IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow
+          RUN_ID: ${{ needs.train.outputs.run_id }}
         run: |
-          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/telco-churn-mlflow"
           cat > MLProject/DockerHub_Link.md <<EOF
           # Docker Hub Image
 
@@ -171,7 +183,7 @@ jobs:
           docker run -p 5000:5000 $IMAGE_NAME:latest
           \`\`\`
 
-          > Build #${{ github.run_number }} — Run ID: ${{ needs.train.outputs.run_id }}
+          > Build #${{ github.run_number }} — Run ID: $RUN_ID
           EOF
 
       - name: Commit updated DockerHub link
