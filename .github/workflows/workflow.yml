@@ -18,6 +18,9 @@ on:
         required: false
         default: "0"
 
+permissions:
+  contents: write
+
 jobs:
   # ─────────────────────────────────────────────
   # JOB 1: Train model dengan MLflow Project
