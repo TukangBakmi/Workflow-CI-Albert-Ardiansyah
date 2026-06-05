@@ -1,0 +1,42 @@
+name: Retrain Model
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+
+  retrain:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install mlflow
+          pip install pandas
+          pip install scikit-learn
+          pip install numpy
+
+      - name: Run MLflow Project
+        run: |
+          cd MLProject
+          mlflow run . -e main
+
+      - name: Upload MLruns
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns
+          path: MLProject/mlruns
